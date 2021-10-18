@@ -49,12 +49,12 @@ function(add_example name)
 			../common)
 	target_link_libraries(${name} rpma ${LIBIBVERBS_LIBRARIES} ${LIBRT_LIBRARIES})
 
-	if(LIBPMEM_FOUND)
+	if(LIBPMEM2_FOUND)
 		target_include_directories(${name}
-			PRIVATE ${LIBPMEM_INCLUDE_DIRS})
-		target_link_libraries(${name} ${LIBPMEM_LIBRARIES})
+			PRIVATE ${LIBPMEM2_INCLUDE_DIRS})
+		target_link_libraries(${name} ${LIBPMEM2_LIBRARIES})
 		target_compile_definitions(${name}
-			PRIVATE USE_LIBPMEM)
+			PRIVATE USE_LIBPMEM2)
 	endif()
 
 	if(LIBPMEM2_FOUND)
