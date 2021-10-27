@@ -101,7 +101,7 @@ main(int argc, char *argv[])
 		 */
 		if (strncmp(mr_ptr, SIGNATURE_STR, SIGNATURE_LEN) != 0) {
 			/* write an initial empty string and persist it */
-			((char *)mr_ptr + dst_offset)[0] = '\0';
+	
 			pmem_persist(mr_ptr, 1);
 			/* write the signature to mark the content as valid */
 			memcpy(mr_ptr, SIGNATURE_STR, SIGNATURE_LEN);
