@@ -10,8 +10,15 @@
 #include <librpma.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
+#include <string.h>
 #include "common-conn.h"
 #include "hello.h"
+#ifndef _WIN32
+#include <unistd.h>
+#else
+#include <io.h>
+#endif
 
 #ifdef USE_LIBPMEM2
 #include <libpmem2.h>
@@ -68,8 +75,8 @@ main(int argc, char *argv[])
 	struct pmem2_config *cfg = NULL;
 	struct pmem2_map *map = NULL;
 	struct pmem2_source *src = NULL;
-	struct pmem2_persist_fn persist;
-	struct pmem2_memcpy_fn copy;
+	pmem2_persist_fn persist;
+	pmem2_memcpy_fn copy;
 	int fd;
 
 	if (argc >= 4) {
@@ -100,7 +107,7 @@ main(int argc, char *argv[])
 
 
 		/* pmem is expected */
-		if (!err == PMEM2_E_GRANULARITY_NOT_SUPPORTED) {
+		if (err != PMEM2_E_GRANULARITY_NOT_SUPPORTED) {
 			(void) fprintf(stderr, "%s is not an actual PMEM\n",
 					path);
 			return -1;
@@ -140,6 +147,7 @@ main(int argc, char *argv[])
 		if (mr_size - data_offset < sizeof(struct hello_t)) {
 			fprintf(stderr, "%s too small (%zu < %zu)\n",
 				path, mr_size, sizeof(struct hello_t));
+			(void) pmem2_unmap(mr_ptr, mr_size);
 			return -1;
 		}
 
@@ -192,7 +200,7 @@ main(int argc, char *argv[])
 		if (mr_size < SIGNATURE_LEN) {
 			(void) fprintf(stderr, "%s too small (%zu < %zu)\n",
 					path, mr_size, SIGNATURE_LEN);
-			(void) pmem_unmap(mr_ptr, mr_size);
+				pmem_unmap(mr_ptr, mr_size);
 			return -1;
 		}
 		data_offset = SIGNATURE_LEN;
@@ -298,8 +306,7 @@ main(int argc, char *argv[])
 	if (err) {
 		persist(hello, sizeof(struct hello_t));
 	}
-#endif
-#ifdef USE_LIBPMEM
+#elif USE_LIBPMEM
 	if (is_pmem) {
 		pmem_persist(hello, sizeof(struct hello_t));
 	}

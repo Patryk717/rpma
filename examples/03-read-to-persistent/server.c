@@ -12,7 +12,14 @@
 #include <librpma.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
+#include <string.h>
 #include "common-conn.h"
+#ifndef _WIN32
+#include <unistd.h>
+#else
+#include <io.h>
+#endif
 
 #ifdef USE_LIBPMEM2
 #include <libpmem2.h>
@@ -53,12 +60,12 @@ main(int argc, char *argv[])
 	struct pmem2_config *cfg = NULL;
 	struct pmem2_map *map = NULL;
 	struct pmem2_source *src = NULL;
-	struct pmem2_persist_fn persist;
-	struct pmem2_memcpy_fn copy;
+	pmem2_persist_fn persist;
+	pmem2_memcpy_fn copy;
 	int fd;
 
 	if (argc >= 4) {
-		char *path = argv[3];
+		char *pmem_path = argv[3];
 
 	if ((fd = open(argv[1], O_RDWR)) < 0) {
 		perror("open");
@@ -85,9 +92,9 @@ main(int argc, char *argv[])
 
 
 		/* pmem is expected */
-		if (!err == PMEM2_E_GRANULARITY_NOT_SUPPORTED) {
+		if (err != PMEM2_E_GRANULARITY_NOT_SUPPORTED) {
 			(void) fprintf(stderr, "%s is not an actual PMEM\n",
-					path);
+					pmem_path);
 			return -1;
 		}
 
@@ -111,16 +118,16 @@ main(int argc, char *argv[])
 		if (mr_size < SIGNATURE_LEN) {
 			(void) fprintf(stderr, "%s too small (%zu < %zu)\n",
 					pmem_path, mr_size, SIGNATURE_LEN);
-			(void) pmem2_unmap(mr_ptr, mr_size);
+				pmem2_unmap(mr_ptr, mr_size);
 			return -1;
 		}
-		data_offset = SIGNATURE_LEN;
+		dst_offset = SIGNATURE_LEN;
 
 		/*
 		 * All of the space under the offset is intended for
 		 * the string contents. Space is assumed to be at least 1 KiB.
 		 */
-		if (mr_size - data_offset < KILOBYTE) {
+		if (mr_size - dst_offset < KILOBYTE) {
 			fprintf(stderr, "%s too small (%zu < %zu)\n",
 				pmem_path, mr_size, KILOBYTE + dst_offset);
 			return -1;
@@ -248,9 +255,7 @@ main(int argc, char *argv[])
 		if (ret)
 			goto err_mr_dereg;
 	}
-#endif /* USE_LIBPMEM2 */
-
-#ifdef USE_LIBPMEM
+#elif USE_LIBPMEM
 	/* rpma_mr_advise() should be called only in case of FsDAX */
 	if (is_pmem && strstr(pmem_path, "/dev/dax") == NULL) {
 		ret = rpma_mr_advise(dst_mr, 0, mr_size,
@@ -323,7 +328,7 @@ main(int argc, char *argv[])
 	}
 #ifdef USE_LIBPMEM2
 	if (err) {
-		persist((char *)mr_ptr + data_offset, KILOBYTE);
+		persist((char *)mr_ptr + dst_offset, KILOBYTE);
 	}
 #endif /* USE_LIBPMEM2 */
 
